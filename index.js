@@ -34,13 +34,15 @@ async function run(){
             res.send(product);
         });
 
-        //my orders
-        // app.get('/order', async(req,res) => {
-        //     const orders = req.body;
-        //     const query = {email: email};
-        //     const bookings = await orderCollection.find(query).toArray();
-        //     res.send(bookings);
-        // });
+    
+        app.get('/order/myOrder/:email', async(req,res) => {
+            const {email} = req.params;
+            if(email){
+                const query = {email};
+                const cursor = await orderCollection.find(query).toArray();
+                return res.send(cursor);
+            }
+        });
 
         app.post('/order', async(req,res) => {
             const orders = req.body;
