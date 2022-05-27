@@ -19,6 +19,7 @@ async function run(){
         await client.connect();
         const productCollection = client.db("computerPartsDb").collection("products");
         const orderCollection = client.db("computerPartsDb").collection("orders");
+        const reviewCollection = client.db("computerPartsDb").collection("review");
 
         app.get('/product', async(req, res) => {
             const query = {};
@@ -47,6 +48,25 @@ async function run(){
         app.post('/order', async(req,res) => {
             const orders = req.body;
             const result = await orderCollection.insertOne(orders);
+            res.send(result);
+        });
+
+        app.post('/review', async(req, res) => {
+            const review = req.body;
+            const result = await reviewCollection.insertOne(review);
+            res.send(result);
+        });
+
+        app.get('/review', async(req, res) => {
+            const query = {}
+            const review = await reviewCollection.find(query).toArray()
+            res.send(review);
+        })
+
+        app.delete('/order/myOrder/:id', async(req, res) => {
+            const id = req.params.id;
+            const query = {_id: ObjectId(id)};
+            const result = await orderCollection.deleteOne(query);
             res.send(result);
         })
     }
