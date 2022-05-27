@@ -21,6 +21,7 @@ async function run(){
         const orderCollection = client.db("computerPartsDb").collection("orders");
         const reviewCollection = client.db("computerPartsDb").collection("review");
         const contactCollection = client.db("computerPartsDb").collection("contact");
+        const userCollection = client.db("computerPartsDb").collection("user");
 
         app.get('/product', async(req, res) => {
             const query = {};
@@ -62,6 +63,27 @@ async function run(){
             const query = {}
             const review = await reviewCollection.find(query).toArray()
             res.send(review);
+        });
+
+        app.put('/user/:email', async(req, res) => {
+            const {email} = req.params;
+            const user = req.body;
+            const filter = {email};
+            const options = { upsert : true};
+            const updateDoc = {
+            $set : user,
+          }
+          const result = await userCollection.updateOne(filter, updateDoc, options)
+          res.send(result);
+
+        });
+
+        app.get('/user/:email', async(req, res) => {
+            const {email} = req.params;
+            const filter = {email};
+            const result = await userCollection.findOne(filter);
+            res.send(result);
+
         });
 
         app.post('/contact', async(req, res) => {
