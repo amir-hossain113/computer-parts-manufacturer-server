@@ -1,6 +1,7 @@
 const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 5000;
@@ -13,6 +14,22 @@ app.use(express.json());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.xqjsu.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+function verifyJWT(req, res, next){
+    const authHeader = req.headers.authorization;
+    console.log(req.headers.authorization)
+      if(!authHeader){
+          return res.status(401).send({message: 'UnAuthorized Access'})
+      }
+      const token = authHeader.split(' ')[1]; 
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded){
+        if(err){
+          return res.status(403).send({message: 'Forbidden Access'})
+        }
+        req.decoded = decoded;
+        console.log("decoded", req.decoded)
+        next();
+      })
+  }
 
 async function run(){
     try{
@@ -38,14 +55,21 @@ async function run(){
         });
 
     
-        app.get('/order/myOrder/:email', async(req,res) => {
-            const {email} = req.params;
-            if(email){
-                const query = {email};
+
+        app.get('/order/myOrder/:email',verifyJWT, async(req,res) => {
+            const email = req.params.email;
+            const decodedEmail = req.decoded.email;
+            if(email === decodedEmail){
+                const query = {email: email};
                 const cursor = await orderCollection.find(query).toArray();
                 return res.send(cursor);
             }
+            else{
+                return res.status(403).send({message: 'Forbidden Access'})
+            }
         });
+
+
 
         app.post('/order', async(req,res) => {
             const orders = req.body;
@@ -65,17 +89,33 @@ async function run(){
             res.send(review);
         });
 
-        app.put('/user/:email', async(req, res) => {
+        app.get('/user', async(req, res) => {
+            const users = await userCollection.find().toArray();
+            res.send(users);
+        })
+
+        app.put('/user/admin/:email', async(req, res) => {
             const {email} = req.params;
-            const user = req.body;
             const filter = {email};
+            const updateDoc = {
+            $set : {role: 'admin'},
+          }
+          const result = await userCollection.updateOne(filter, updateDoc)
+          res.send(result);
+        });
+
+        app.put('/user/:email', async(req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            const filter = {email: email};
             const options = { upsert : true};
             const updateDoc = {
             $set : user,
           }
           const result = await userCollection.updateOne(filter, updateDoc, options)
-          res.send(result);
-
+        //   res.send(result);
+          const token = jwt.sign({email: email}, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h'})
+          res.send({result, token});
         });
 
         app.get('/user/:email', async(req, res) => {
@@ -85,6 +125,8 @@ async function run(){
             res.send(result);
 
         });
+
+        
 
         app.post('/contact', async(req, res) => {
             const contact = req.body;
